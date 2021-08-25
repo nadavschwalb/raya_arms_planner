@@ -1,0 +1,9 @@
+#goal
+geometry_msgs/Pose goal_pose
+---
+#result
+bool goal_reached 
+---
+#feedback
+float32 percentage_complete
+ 
