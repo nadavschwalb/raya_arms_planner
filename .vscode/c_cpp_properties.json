@@ -1,0 +1,18 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/nadavsholev/raya_unity_ws/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/nadavsholev/ur/raya_unity_ws/devel/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}
