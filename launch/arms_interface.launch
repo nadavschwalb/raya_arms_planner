@@ -30,5 +30,5 @@
         <arg name="pipeline" value="$(arg pipeline)"/>
         <arg name="load_robot_description" value="$(arg load_robot_description)"/>
   </include>
-    <node pkg="raya_arms_planner" type="arms_interface.py" name="arm_interface" />
+    <node pkg="raya_arms_planner" type="arms_interface.py" name="arm_interface" output="screen" />
 </launch>
