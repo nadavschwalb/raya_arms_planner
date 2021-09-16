@@ -1,11 +1,15 @@
 #!/usr/bin/python
 import sys
 import os
+from moveit_commander import robot
 import rospy
 import roslib
 import moveit_commander
 import moveit_msgs.msg
 from copy import deepcopy
+from rospy.service import ServiceException
+
+from urdf_parser_py.urdf import Robot
 roslib.load_manifest("raya_arms_planner")
 import actionlib
 from moveit_commander import move_group
@@ -18,9 +22,12 @@ from rosgraph.names import SEP
 from geometry_msgs.msg import PoseStamped, Pose
 from moveit_commander.conversions import pose_to_list
 from tf.transformations import quaternion_from_euler
-
+from raya_msgs.msg import JointProperties
 from raya_msgs.msg import ArmJointPlannerAction, ArmJointPlannerActionGoal, ArmJointPlannerActionFeedback, ArmJointPlannerActionResult,\
                           ArmPosePlannerAction, ArmPosePlannerActionGoal, ArmPosePlannerActionFeedback, ArmPosePlannerActionResult
+from raya_msgs.srv import RobotModelInfo, RobotModelInfoRequest, RobotModelInfoResponse
+from kdl_parser_py import urdf
+
 
 class JointGoalPlanner:
     def __init__(self):
@@ -161,6 +168,33 @@ class PoseGoalPlanner:
             self.action_server.set_succeeded(result=self._result.result,text="right arm goal reached")
         else:
             rospy.loginfo("not a move group")
+
+class RobotModelInfoService:
+    def __init__(self):
+        self.service = rospy.Service("robot_model_info",\
+            RobotModelInfo,self.handle_info_request)
+        self.robot_commander = RobotCommander()
+        rospy.loginfo("robot model info service initialized")
+    def handle_info_request(self,request):
+        rospy.loginfo("retreiving {} info".format(request.move_group))
+        robot_model = Robot().from_parameter_server()
+        joint_dict = robot_model.joint_map
+        response = RobotModelInfoResponse()
+        try:
+            active_joint_names = self.robot_commander.get_active_joint_names(request.move_group)
+        except:
+            rospy.logerr("failed to retrieve joint properties, not a vaible move group")
+            raise ServiceException("not a viable move group")
+        response.move_group = request.move_group
+        for joint_name in active_joint_names:
+            joint_properties = JointProperties()
+            joint_properties.name = joint_name
+            joint_properties.type = joint_dict[joint_name].type
+            joint_properties.lower_limit = joint_dict[joint_name].limit.lower
+            joint_properties.upper_limit = joint_dict[joint_name].limit.upper
+            response.joints.append(joint_properties)
+        return response
+
 
             
 

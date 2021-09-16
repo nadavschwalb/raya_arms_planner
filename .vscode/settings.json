@@ -8,5 +8,6 @@
         "/home/nadavsholev/raya_unity_ws/devel/lib/python2.7/dist-packages",
         "/home/nadavsholev/ur/raya_unity_ws/devel/lib/python2.7/dist-packages",
         "/opt/ros/melodic/lib/python2.7/dist-packages"
-    ]
+    ],
+    "cmake.configureOnOpen": false
 }
