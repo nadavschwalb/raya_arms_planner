@@ -135,12 +135,16 @@ class PoseGoalPlanner:
             try:
                 self.left_move_group.set_pose_target(pose_goal.goal_pose)
                 self.left_arm_plan = self.left_move_group.plan()
+                if len(self.left_arm_plan.joint_trajectory.joint_names) == 0:
+                    raise MoveItCommanderException
             except MoveItCommanderException:
                 rospy.loginfo("failed to plan a trajectory for goal pose, is the pose in bounds?")
                 self._result.result.goal_reached = False
                 self._result.result.arm = "left"
                 self.action_server.set_aborted(result=self._result.result,text="failed to get plan for left arm")
                 return
+            except Exception as e:
+                rospy.loginfo(e)
             self.left_move_group.execute(self.left_arm_plan,wait=True)
             self.left_move_group.stop()
             self.left_move_group.clear_pose_targets()
@@ -153,6 +157,8 @@ class PoseGoalPlanner:
             try:
                 self.right_move_group.set_pose_target(pose_goal.goal_pose)
                 self.right_arm_plan = self.right_move_group.plan()
+                if len(self.right_arm_plan.joint_trajectory.joint_names) == 0:
+                    raise MoveItCommanderException
             except MoveItCommanderException:
                 rospy.loginfo("failed to plan a trajectory for goal pose, is the pose in bounds?")
                 self._result.result.goal_reached = False
@@ -194,6 +200,7 @@ class RobotModelInfoService:
             joint_properties.upper_limit = joint_dict[joint_name].limit.upper
             response.joints.append(joint_properties)
         return response
+
 
 
             
