@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from math import radians
 import sys
 import os
 from moveit_commander import robot
@@ -22,10 +23,13 @@ from rosgraph.names import SEP
 from geometry_msgs.msg import PoseStamped, Pose
 from moveit_commander.conversions import pose_to_list
 from tf.transformations import quaternion_from_euler
+from moveit_msgs.msg import RobotTrajectory, ExecuteTrajectoryActionGoal
+from trajectory_msgs.msg import JointTrajectoryPoint , JointTrajectory
 from raya_msgs.msg import JointProperties
 from raya_msgs.msg import ArmJointPlannerAction, ArmJointPlannerActionGoal, ArmJointPlannerActionFeedback, ArmJointPlannerActionResult,\
                           ArmPosePlannerAction, ArmPosePlannerActionGoal, ArmPosePlannerActionFeedback, ArmPosePlannerActionResult
 from raya_msgs.srv import RobotModelInfo, RobotModelInfoRequest, RobotModelInfoResponse
+from raya_msgs.srv import GripperCommand, GripperCommandRequest, GripperCommandResponse
 from kdl_parser_py import urdf
 
 
@@ -202,7 +206,64 @@ class RobotModelInfoService:
         return response
 
 
+class GripperController:
+    def __init__(self,gripper_travel=15):
+        self.service = rospy.Service("control_gripper",\
+            GripperCommand, self.handle_gripper_command)
+        self.trajectory_pub = rospy.Publisher("execute_trajectory/goal",\
+            ExecuteTrajectoryActionGoal,queue_size=10)
+        rospy.loginfo("gripper controller started")
+        self.left_hand_state = "open"
+        self.right_hand_state = "open"      
+        self.left_hand_group = MoveGroupCommander("left_hand")
+        self.right_hand_group = MoveGroupCommander("right_hand")
+        self.GRIPPER_TRAVEL = gripper_travel
+        self.response = GripperCommandResponse()
+    def handle_gripper_command(self,request):
 
+        # request = GripperCommandRequest() #/TODO don't forget to comment out
+        trajectory_goal = ExecuteTrajectoryActionGoal()
+        trajectory = RobotTrajectory()
+        trajectory.joint_trajectory.header.frame_id = "base_link"
+        trajectory.joint_trajectory.header.stamp = rospy.Time().now()
+        trajectory.joint_trajectory.points = []
+        if "left" in request.gripper:
+            if request.gripper in self.left_hand_state:
+                raise ServiceException("gripper already in desired state")
+            trajectory.joint_trajectory.joint_names = self.left_hand_group.get_active_joints()
+            trajectory.joint_trajectory.points = self.calculate_trajectory(request.state)
+        elif "right" in request.gripper:
+            if request.gripper in self.left_hand_state:
+                raise ServiceException("gripper already in desired state")
+            trajectory.joint_trajectory.joint_names = self.right_hand_group.get_active_joints()
+            trajectory.joint_trajectory.points = self.calculate_trajectory(request.state)
+        else:
+            raise ServiceException("incorrect gripper name, choose \"left\" or \"right\"")
+
+        trajectory_goal.goal.trajectory = trajectory
+        rospy.loginfo(trajectory_goal)
+        self.trajectory_pub.publish(trajectory_goal)
+        return self.response
+            
+    def calculate_trajectory(self,state):
+        points = []
+        start_time = rospy.Time().now()
+        if "close" in state:
+            for i in range(0,self.GRIPPER_TRAVEL):
+                point = JointTrajectoryPoint()
+                point.positions = [radians(i)]
+                point.time_from_start = rospy.Time().now() - start_time
+                points.append(point)
+            return points
+        elif "open" in state:
+            for i in range(self.GRIPPER_TRAVEL-1,-1,-1):
+                point = JointTrajectoryPoint()
+                point.positions = [radians(i)]
+                point.time_from_start = rospy.Time().now() - start_time
+                points.append(point)
+            return points
+        else:
+            raise ServiceException("requested state is incorrect, choose \"open\" or \"closed\"")
             
 
             
