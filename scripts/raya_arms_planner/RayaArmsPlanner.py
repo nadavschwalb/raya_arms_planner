@@ -218,7 +218,7 @@ class GripperController:
         self.left_hand_group = MoveGroupCommander("left_hand")
         self.right_hand_group = MoveGroupCommander("right_hand")
         self.GRIPPER_TRAVEL = gripper_travel
-        self.response = GripperCommandResponse()
+        
     def handle_gripper_command(self,request):
 
         # request = GripperCommandRequest() #/TODO don't forget to comment out
@@ -227,39 +227,47 @@ class GripperController:
         trajectory.joint_trajectory.header.frame_id = "base_link"
         trajectory.joint_trajectory.header.stamp = rospy.Time().now()
         trajectory.joint_trajectory.points = []
+        response = GripperCommandResponse()
         if "left" in request.gripper:
-            if request.gripper in self.left_hand_state:
+            if request.state in self.left_hand_state:
+                rospy.loginfo(self.left_hand_state)
                 raise ServiceException("gripper already in desired state")
             trajectory.joint_trajectory.joint_names = self.left_hand_group.get_active_joints()
             trajectory.joint_trajectory.points = self.calculate_trajectory(request.state)
+            self.left_hand_state = request.state
+            response.final_state = self.left_hand_state
         elif "right" in request.gripper:
-            if request.gripper in self.left_hand_state:
+            if request.state in self.left_hand_state:
                 raise ServiceException("gripper already in desired state")
             trajectory.joint_trajectory.joint_names = self.right_hand_group.get_active_joints()
             trajectory.joint_trajectory.points = self.calculate_trajectory(request.state)
+            self.left_hand_state = request.state
+            response.final_state = self.left_hand_state
         else:
             raise ServiceException("incorrect gripper name, choose \"left\" or \"right\"")
 
         trajectory_goal.goal.trajectory = trajectory
         rospy.loginfo(trajectory_goal)
         self.trajectory_pub.publish(trajectory_goal)
-        return self.response
+        
+        return response
             
     def calculate_trajectory(self,state):
         points = []
-        start_time = rospy.Time().now()
+        start_time = rospy.Time()
+        duration = rospy.Duration(0,2e7)
         if "close" in state:
             for i in range(0,self.GRIPPER_TRAVEL):
                 point = JointTrajectoryPoint()
                 point.positions = [radians(i)]
-                point.time_from_start = rospy.Time().now() - start_time
+                point.time_from_start += duration
                 points.append(point)
             return points
         elif "open" in state:
             for i in range(self.GRIPPER_TRAVEL-1,-1,-1):
                 point = JointTrajectoryPoint()
                 point.positions = [radians(i)]
-                point.time_from_start = rospy.Time().now() - start_time
+                point.time_from_start += duration
                 points.append(point)
             return points
         else:
