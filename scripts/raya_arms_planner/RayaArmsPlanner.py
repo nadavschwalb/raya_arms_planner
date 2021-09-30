@@ -254,7 +254,6 @@ class GripperController:
             
     def calculate_trajectory(self,state):
         points = []
-        start_time = rospy.Time()
         duration = rospy.Duration(0,2e7)
         if "close" in state:
             for i in range(0,self.GRIPPER_TRAVEL):
